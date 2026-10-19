@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased font-sans;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+/* Custom modern scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Consistent Entity Color System */
+.badge-patient { @apply bg-emerald-50 text-emerald-700 border-emerald-200; }
+.badge-doctor { @apply bg-sky-50 text-sky-700 border-sky-200; }
+.badge-appointment { @apply bg-purple-50 text-purple-700 border-purple-200; }
+.badge-consultation { @apply bg-teal-50 text-teal-700 border-teal-200; }
+.badge-prescription { @apply bg-orange-50 text-orange-700 border-orange-200; }
+.badge-labtest { @apply bg-rose-50 text-rose-700 border-rose-200; }
+.badge-bill { @apply bg-amber-50 text-amber-700 border-amber-200; }
+.badge-claim { @apply bg-indigo-50 text-indigo-700 border-indigo-200; }
