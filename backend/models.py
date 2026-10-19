@@ -3,10 +3,10 @@ from pydantic import BaseModel, Field
 
 # --- Patient Models ---
 class PatientCreate(BaseModel):
-    name: str = Field(..., min_length=1)
+    name: str = Field(..., min_length=1, description="Full Name of the patient")
     dob: str = Field(..., description="YYYY-MM-DD")
     gender: str = Field(..., description="Male, Female, Other")
-    phone: str = Field(..., min_length=1)
+    phone: str = Field(..., min_length=1, description="Mobile number")
     address: Optional[str] = ""
     bloodGroup: Optional[str] = ""
     companyId: Optional[str] = None
@@ -19,6 +19,8 @@ class PatientUpdate(BaseModel):
     phone: Optional[str] = None
     address: Optional[str] = None
     bloodGroup: Optional[str] = None
+    companyId: Optional[str] = None
+    policyNo: Optional[str] = None
 
 # --- Appointment Models ---
 class AppointmentCreate(BaseModel):
@@ -30,7 +32,7 @@ class AppointmentCreate(BaseModel):
 class AppointmentUpdate(BaseModel):
     date: Optional[str] = None
     time: Optional[str] = None
-    status: Optional[str] = Field(None, description="Scheduled, Completed, Cancelled")
+    status: Optional[str] = Field(None, description="Scheduled, Completed, Cancelled, No-show")
 
 # --- Consultation Models ---
 class MedicineItem(BaseModel):
@@ -39,7 +41,7 @@ class MedicineItem(BaseModel):
     durationDays: int = Field(..., gt=0)
 
 class LabTestItem(BaseModel):
-    testType: str = Field(..., description="Blood, MRI, X-Ray, ECG, CT, etc.")
+    testType: str = Field(..., description="Blood Test, Lipid Profile, X-Ray, ECG, CT Scan")
     charge: float = Field(0.0, ge=0)
     technicianId: Optional[str] = None
 
@@ -55,9 +57,9 @@ class LabTestUpdate(BaseModel):
     result: str
     resultStatus: str = Field(..., description="Normal, Abnormal, Pending")
 
-# --- Bill & Claim Models ---
+# --- Bill & Insurance Claim Models ---
 class ClaimCreate(BaseModel):
-    companyId: str
+    companyId: str = Field(..., description="e.g. Star Health, HDFC ERGO, WellnessCorp")
     claimAmount: float = Field(..., gt=0)
 
 class ClaimUpdate(BaseModel):
@@ -71,7 +73,7 @@ class BillCreate(BaseModel):
     pharmacyCharge: float = Field(0.0, ge=0)
     roomCharge: float = Field(0.0, ge=0)
     otherCharge: float = Field(0.0, ge=0)
-    paymentMode: str = Field("Direct", description="Direct, Insurance")
+    paymentMode: str = Field("UPI", description="UPI, Card, Cash, Direct, Insurance")
     paymentStatus: str = Field("Paid", description="Paid, Pending")
     claim: Optional[ClaimCreate] = None
 

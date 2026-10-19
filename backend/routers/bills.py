@@ -3,10 +3,10 @@ from datetime import date
 from typing import Optional
 from fastapi import APIRouter, HTTPException
 from db import run_query, run_write_transaction
-from models import BillCreate, BillUpdate, ClaimUpdate
+from models import BillCreate, BillUpdate
 import schema_map as sm
 
-router = APIRouter(tags=["Billing & Claims"])
+router = APIRouter(tags=["Billing & Invoices"])
 
 def gen_id(prefix: str = "B") -> str:
     return f"{prefix}{uuid.uuid4().hex[:4].upper()}"
@@ -19,7 +19,6 @@ def list_bills(
     cypher = f"""
     MATCH (p:{sm.LABEL_PATIENT})-[:{sm.REL_HAS_BILL}]->(b:{sm.LABEL_BILL})
     OPTIONAL MATCH (t:{sm.LABEL_TREATMENT})-[:{sm.REL_HAS_BILL}]->(b)
-    OPTIONAL MATCH (b)-[:{sm.REL_HAS_CLAIM}]->(cl:{sm.LABEL_INSURANCE_CLAIM})
     WHERE ($patient IS NULL OR (p.firstName + ' ' + p.lastName) =~ $pat_pattern OR p.{sm.KEY_PATIENT} = $patient)
       AND ($mode IS NULL OR b.paymentMethod = $mode OR b.paymentMode = $mode)
     RETURN b.{sm.KEY_BILL} AS billNo,
@@ -30,16 +29,11 @@ def list_bills(
            coalesce(b.roomCharge, 0.0) AS roomCharge,
            coalesce(b.otherCharge, round(b.amount * 0.1, 2)) AS otherCharge,
            round(b.amount, 2) AS totalAmount,
-           coalesce(b.paymentMethod, b.paymentMode, 'Direct') AS paymentMode,
-           b.paymentStatus AS paymentStatus,
+           coalesce(b.paymentMethod, b.paymentMode, 'UPI') AS paymentMode,
+           coalesce(b.paymentStatus, 'Paid') AS paymentStatus,
            p.{sm.KEY_PATIENT} AS patientId,
            coalesce(p.name, p.firstName + ' ' + p.lastName) AS patientName,
-           t.{sm.KEY_TREATMENT} AS treatmentId,
-           cl.{sm.KEY_INSURANCE_CLAIM} AS claimId,
-           round(coalesce(cl.claimAmount, 0), 2) AS claimAmount,
-           round(coalesce(cl.approvedAmount, 0), 2) AS approvedAmount,
-           cl.status AS claimStatus,
-           coalesce(cl.insuranceProvider, p.insuranceProvider, 'Standard Insurance') AS insuranceCompany
+           t.{sm.KEY_TREATMENT} AS treatmentId
     ORDER BY b.billDate DESC
     """
     params = {
@@ -52,7 +46,7 @@ def list_bills(
 
 @router.post("/bills", status_code=201)
 def create_bill(data: BillCreate):
-    # Find patient via consultation or treatment
+    # Find patient via consultation or appointment
     find_pat = run_query(f"""
     MATCH (c:{sm.LABEL_CONSULTATION} {{{sm.KEY_CONSULTATION}: $cid}})<-[:{sm.REL_HAS_CONSULTATION}]-(a:{sm.LABEL_APPOINTMENT})<-[:{sm.REL_HAS_APPOINTMENT}]-(p:{sm.LABEL_PATIENT})
     OPTIONAL MATCH (a)-[:{sm.REL_HAS_TREATMENT}]->(t:{sm.LABEL_TREATMENT})
@@ -60,7 +54,6 @@ def create_bill(data: BillCreate):
     """, {"cid": data.consultationId})
 
     if not find_pat:
-        # Fallback to direct appointment ID
         find_pat = run_query(f"""
         MATCH (a:{sm.LABEL_APPOINTMENT} {{{sm.KEY_APPOINTMENT}: $cid}})<-[:{sm.REL_HAS_APPOINTMENT}]-(p:{sm.LABEL_PATIENT})
         OPTIONAL MATCH (a)-[:{sm.REL_HAS_TREATMENT}]->(t:{sm.LABEL_TREATMENT})
@@ -83,7 +76,7 @@ def create_bill(data: BillCreate):
         data.otherCharge
     )
     if total_amount == 0.0:
-        total_amount = 1250.0
+        total_amount = 1500.0
 
     def _transaction_work(tx):
         create_bill_cypher = f"""
@@ -115,8 +108,8 @@ def create_bill(data: BillCreate):
             "r_charge": data.roomCharge,
             "o_charge": data.otherCharge,
             "total": total_amount,
-            "mode": data.paymentMode,
-            "status": data.paymentStatus
+            "mode": data.paymentMode or "UPI",
+            "status": data.paymentStatus or "Paid"
         })
 
         if treatment_id:
@@ -126,30 +119,6 @@ def create_bill(data: BillCreate):
             MERGE (t)-[:{sm.REL_HAS_BILL}]->(b)
             """
             tx.run(link_treat, {"t_id": treatment_id, "bill_no": bill_no})
-
-        if data.claim:
-            claim_id = gen_id("ICB")
-            claim_cypher = f"""
-            MATCH (b:{sm.LABEL_BILL} {{{sm.KEY_BILL}: $bill_no}})
-            MATCH (p:{sm.LABEL_PATIENT} {{{sm.KEY_PATIENT}: $patient_id}})
-            CREATE (cl:{sm.LABEL_INSURANCE_CLAIM} {{
-                {sm.KEY_INSURANCE_CLAIM}: $claim_id,
-                claimAmount: $claim_amount,
-                approvedAmount: 0.0,
-                status: 'Pending verification',
-                insuranceProvider: $company_id,
-                insuranceNumber: coalesce(p.insuranceNumber, 'INS-001')
-            }})
-            CREATE (b)-[:{sm.REL_HAS_CLAIM}]->(cl)
-            CREATE (p)-[:{sm.REL_HAS_CLAIM}]->(cl)
-            """
-            tx.run(claim_cypher, {
-                "bill_no": bill_no,
-                "patient_id": patient_id,
-                "claim_id": claim_id,
-                "company_id": data.claim.companyId or "WellnessCorp",
-                "claim_amount": data.claim.claimAmount
-            })
 
     run_write_transaction(_transaction_work)
 
@@ -210,71 +179,22 @@ def delete_bill(bill_no: str):
 
     cypher = f"""
     MATCH (b:{sm.LABEL_BILL} {{{sm.KEY_BILL}: $id}})
-    OPTIONAL MATCH (b)-[:{sm.REL_HAS_CLAIM}]->(cl:{sm.LABEL_INSURANCE_CLAIM})
-    DETACH DELETE cl, b
+    DETACH DELETE b
     """
     run_query(cypher, {"id": bill_no})
-    return {"status": "success", "message": f"Bill {bill_no} and related claim deleted."}
-
-
-@router.put("/claims/{claim_id}")
-def update_claim(claim_id: str, data: ClaimUpdate):
-    check = run_query(f"MATCH (cl:{sm.LABEL_INSURANCE_CLAIM} {{{sm.KEY_INSURANCE_CLAIM}: $id}}) RETURN cl", {"id": claim_id})
-    if not check:
-        raise HTTPException(status_code=404, detail="Insurance claim not found")
-
-    approval_date = str(date.today()) if data.status == "Approved" else None
-
-    cypher = f"""
-    MATCH (cl:{sm.LABEL_INSURANCE_CLAIM} {{{sm.KEY_INSURANCE_CLAIM}: $id}})
-    SET cl.status = $status,
-        cl.approvedAmount = $approved,
-        cl.approvalDate = $approval_date
-    RETURN cl.{sm.KEY_INSURANCE_CLAIM} AS claimId,
-           cl.status AS status,
-           cl.approvedAmount AS approvedAmount,
-           cl.approvalDate AS approvalDate
-    """
-    records = run_query(cypher, {
-        "id": claim_id,
-        "status": data.status,
-        "approved": data.approvedAmount,
-        "approval_date": approval_date
-    })
-    return records[0]
-
-
-@router.get("/insurance-companies")
-def list_insurance_companies():
-    cypher = f"""
-    MATCH (cl:{sm.LABEL_INSURANCE_CLAIM})
-    WHERE cl.insuranceProvider IS NOT NULL AND cl.insuranceProvider <> ''
-    RETURN DISTINCT cl.insuranceProvider AS companyId,
-           cl.insuranceProvider AS name,
-           '1-800-INSURANCE' AS contact
-    ORDER BY name ASC
-    """
-    records = run_query(cypher)
-    if not records:
-        return [
-            {"companyId": "WellnessCorp", "name": "WellnessCorp", "contact": "+1-800-555-0101"},
-            {"companyId": "PulseSecure", "name": "PulseSecure", "contact": "+1-800-555-0102"},
-            {"companyId": "CarePlus", "name": "CarePlus", "contact": "+1-800-555-0103"}
-        ]
-    return records
+    return {"status": "success", "message": f"Bill {bill_no} deleted."}
 
 
 @router.get("/reports/patient-billing")
 def patient_billing_report():
-    """Report: Full patient billing report matching required query 11"""
+    """Report: Full patient billing and settlement report in INR"""
     cypher = f"""
     MATCH (p:{sm.LABEL_PATIENT})-[:{sm.REL_HAS_BILL}]->(b:{sm.LABEL_BILL})
-    OPTIONAL MATCH (b)-[:{sm.REL_HAS_CLAIM}]->(cl:{sm.LABEL_INSURANCE_CLAIM})
     RETURN coalesce(p.name, p.firstName + ' ' + p.lastName) AS patient,
            round(b.amount, 2) AS totalBill,
-           coalesce(round(cl.claimAmount, 2), 0) AS claimAmount,
-           coalesce(round(cl.approvedAmount, 2), 0) AS approvedAmount,
-           round(b.amount - coalesce(cl.approvedAmount, 0), 2) AS patientPayable
+           coalesce(b.paymentMethod, 'UPI') AS paymentMode,
+           coalesce(b.paymentStatus, 'Paid') AS paymentStatus,
+           toString(b.billDate) AS billDate
     ORDER BY totalBill DESC
     """
     return run_query(cypher)

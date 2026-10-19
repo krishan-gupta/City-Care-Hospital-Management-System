@@ -28,16 +28,15 @@ def get_dashboard_summary():
         MATCH (b:{sm.LABEL_BILL}) RETURN coalesce(round(sum(b.amount), 2), 0) AS totalRevenue
     }}
     CALL () {{
-        MATCH (cl:{sm.LABEL_INSURANCE_CLAIM})
-        WHERE cl.status =~ '(?i).*pending.*' OR cl.status = 'Submitted'
-        RETURN count(cl) AS pendingClaims
+        MATCH (b2:{sm.LABEL_BILL}) WHERE b2.paymentStatus = 'Paid'
+        RETURN count(b2) AS settledInvoices
     }}
     CALL () {{
         MATCH (t:{sm.LABEL_LAB_TEST})
         WHERE t.status = 'Abnormal'
         RETURN count(t) AS abnormalLabResults
     }}
-    RETURN totalPatients, totalDoctors, totalAppointments, appointmentsToday, totalRevenue, pendingClaims, abnormalLabResults
+    RETURN totalPatients, totalDoctors, totalAppointments, appointmentsToday, totalRevenue, settledInvoices, abnormalLabResults
     """
     records = run_query(cypher, {"today": today_str})
     if records:
@@ -48,7 +47,7 @@ def get_dashboard_summary():
         "totalAppointments": 0,
         "appointmentsToday": 0,
         "totalRevenue": 0,
-        "pendingClaims": 0,
+        "settledInvoices": 0,
         "abnormalLabResults": 0
     }
 
@@ -78,33 +77,16 @@ def get_dashboard_billing():
     }
 
 
-@router.get("/claims")
-def get_dashboard_claims():
-    status_cypher = f"""
-    MATCH (cl:{sm.LABEL_INSURANCE_CLAIM})
-    RETURN coalesce(cl.status, 'Unknown') AS status,
-           count(cl) AS count,
-           round(coalesce(sum(cl.claimAmount), 0), 2) AS totalAmount,
-           round(coalesce(sum(cl.approvedAmount), 0), 2) AS totalApproved
-    ORDER BY count DESC
+@router.get("/payments")
+def get_dashboard_payments():
+    cypher = f"""
+    MATCH (b:{sm.LABEL_BILL})
+    RETURN coalesce(b.paymentMethod, 'UPI') AS method,
+           count(b) AS count,
+           round(sum(b.amount), 2) AS totalAmount
+    ORDER BY totalAmount DESC
     """
-    by_status = run_query(status_cypher)
-
-    company_cypher = f"""
-    MATCH (cl:{sm.LABEL_INSURANCE_CLAIM})
-    WHERE cl.insuranceProvider IS NOT NULL AND cl.insuranceProvider <> ''
-    RETURN cl.insuranceProvider AS company,
-           count(cl) AS claimCount,
-           round(coalesce(sum(cl.claimAmount), 0), 2) AS totalClaimed,
-           round(coalesce(sum(cl.approvedAmount), 0), 2) AS totalApproved
-    ORDER BY totalClaimed DESC
-    """
-    by_company = run_query(company_cypher)
-
-    return {
-        "byStatus": by_status,
-        "byCompany": by_company
-    }
+    return run_query(cypher)
 
 
 @router.get("/doctors")
