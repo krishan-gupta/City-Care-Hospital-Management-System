@@ -12,8 +12,9 @@ else:
     load_dotenv()
 
 NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
-NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
+NEO4J_USER = os.getenv("NEO4J_USER") or os.getenv("NEO4J_USERNAME") or "neo4j"
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "")
+NEO4J_DATABASE = os.getenv("NEO4J_DATABASE")
 
 _driver: Optional[Driver] = None
 
@@ -66,7 +67,8 @@ def serialize_neo4j_value(val: Any) -> Any:
 def run_query(cypher: str, parameters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
     """Execute a read-oriented or standard Cypher query and return serialized dictionaries."""
     driver = get_driver()
-    with driver.session() as session:
+    session_kwargs = {"database": NEO4J_DATABASE} if NEO4J_DATABASE else {}
+    with driver.session(**session_kwargs) as session:
         result = session.run(cypher, parameters or {})
         records = [serialize_neo4j_value(record.data()) for record in result]
         return records
@@ -75,5 +77,6 @@ def run_query(cypher: str, parameters: Optional[Dict[str, Any]] = None) -> List[
 def run_write_transaction(unit_of_work, *args, **kwargs):
     """Execute a multi-step write function inside a single transaction."""
     driver = get_driver()
-    with driver.session() as session:
+    session_kwargs = {"database": NEO4J_DATABASE} if NEO4J_DATABASE else {}
+    with driver.session(**session_kwargs) as session:
         return session.execute_write(unit_of_work, *args, **kwargs)
