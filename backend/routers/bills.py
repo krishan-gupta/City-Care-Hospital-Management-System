@@ -18,9 +18,9 @@ def list_bills(
 ):
     cypher = f"""
     MATCH (p:{sm.LABEL_PATIENT})-[:{sm.REL_HAS_BILL}]->(b:{sm.LABEL_BILL})
-    OPTIONAL MATCH (t:{sm.LABEL_TREATMENT})-[:{sm.REL_HAS_BILL}]->(b)
     WHERE ($patient IS NULL OR (p.firstName + ' ' + p.lastName) =~ $pat_pattern OR p.{sm.KEY_PATIENT} = $patient)
       AND ($mode IS NULL OR b.paymentMethod = $mode OR b.paymentMode = $mode)
+    OPTIONAL MATCH (t:{sm.LABEL_TREATMENT})-[:{sm.REL_HAS_BILL}]->(b)
     RETURN b.{sm.KEY_BILL} AS billNo,
            toString(b.billDate) AS billDate,
            coalesce(b.consultationCharge, round(b.amount * 0.4, 2)) AS consultationCharge,
@@ -29,7 +29,7 @@ def list_bills(
            coalesce(b.roomCharge, 0.0) AS roomCharge,
            coalesce(b.otherCharge, round(b.amount * 0.1, 2)) AS otherCharge,
            round(b.amount, 2) AS totalAmount,
-           coalesce(b.paymentMethod, b.paymentMode, 'UPI') AS paymentMode,
+           coalesce(b.paymentMode, b.paymentMethod, 'UPI') AS paymentMode,
            coalesce(b.paymentStatus, 'Paid') AS paymentStatus,
            p.{sm.KEY_PATIENT} AS patientId,
            coalesce(p.name, p.firstName + ' ' + p.lastName) AS patientName,
@@ -42,7 +42,6 @@ def list_bills(
         "mode": paymentMode
     }
     return run_query(cypher, params)
-
 
 @router.post("/bills", status_code=201)
 def create_bill(data: BillCreate):

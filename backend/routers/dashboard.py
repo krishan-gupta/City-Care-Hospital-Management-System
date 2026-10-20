@@ -81,13 +81,12 @@ def get_dashboard_billing():
 def get_dashboard_payments():
     cypher = f"""
     MATCH (b:{sm.LABEL_BILL})
-    RETURN coalesce(b.paymentMethod, 'UPI') AS method,
+    RETURN coalesce(b.paymentMode, b.paymentMethod, 'UPI') AS method,
            count(b) AS count,
            round(sum(b.amount), 2) AS totalAmount
     ORDER BY totalAmount DESC
     """
     return run_query(cypher)
-
 
 @router.get("/doctors")
 def get_dashboard_doctors():

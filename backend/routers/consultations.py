@@ -15,12 +15,12 @@ def gen_id(prefix: str = "CA") -> str:
 def list_consultations(appointment_id: Optional[str] = None):
     cypher = f"""
     MATCH (a:{sm.LABEL_APPOINTMENT})-[:{sm.REL_HAS_CONSULTATION}]->(c:{sm.LABEL_CONSULTATION})
+    WHERE ($appt_id IS NULL OR a.{sm.KEY_APPOINTMENT} = $appt_id)
     OPTIONAL MATCH (p:{sm.LABEL_PATIENT})-[:{sm.REL_HAS_APPOINTMENT}]->(a)
     OPTIONAL MATCH (d:{sm.LABEL_DOCTOR})-[:{sm.REL_ASSIGNED_TO}]->(a)
     OPTIONAL MATCH (a)-[:{sm.REL_HAS_TREATMENT}]->(t:{sm.LABEL_TREATMENT})
     OPTIONAL MATCH (t)-[:{sm.REL_HAS_PRESCRIPTION}]->(rx:{sm.LABEL_PRESCRIPTION})
     OPTIONAL MATCH (t)-[:{sm.REL_HAS_LAB_TEST}]->(lt:{sm.LABEL_LAB_TEST})
-    WHERE ($appt_id IS NULL OR a.{sm.KEY_APPOINTMENT} = $appt_id)
     RETURN c.{sm.KEY_CONSULTATION} AS consultId,
            toString(c.consultationDate) AS date,
            coalesce(c.reason, c.diagnosis, 'General checkup') AS diagnosis,
@@ -40,7 +40,7 @@ def list_consultations(appointment_id: Optional[str] = None):
                testType: lt.testType,
                status: lt.status
            }}) AS labTests
-    ORDER BY c.consultationDate DESC
+    ORDER BY date DESC
     """
     return run_query(cypher, {"appt_id": appointment_id})
 

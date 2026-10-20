@@ -64,7 +64,7 @@ export const getPatientBillingReport = () => api.get('/reports/patient-billing')
 // --- Dashboard ---
 export const getDashboardSummary = () => api.get('/dashboard/summary');
 export const getDashboardBilling = () => api.get('/dashboard/billing');
-export const getDashboardClaims = () => api.get('/dashboard/claims');
+export const getDashboardClaims = () => api.get('/dashboard/payments');
 export const getDashboardDoctors = () => api.get('/dashboard/doctors');
 
 // --- Query Console ---
