@@ -1,0 +1,8 @@
+NEO4J_URI=neo4j+s://a0c44dec.databases.neo4j.io
+NEO4J_USERNAME=a0c44dec
+NEO4J_USER=a0c44dec
+NEO4J_PASSWORD=lt4Ro-0_MIfD4-9y2wG-dnL_fm69mcsFmvf8HRYktw0
+NEO4J_DATABASE=a0c44dec
+AURA_INSTANCEID=a0c44dec
+AURA_INSTANCENAME=Free instance
+FRONTEND_ORIGIN=http://localhost:5173
