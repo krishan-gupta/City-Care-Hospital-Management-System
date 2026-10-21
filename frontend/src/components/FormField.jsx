@@ -36,8 +36,8 @@ export default function FormField({
           className={`${baseInputStyles} ${error ? 'border-rose-400 ring-1 ring-rose-400' : ''}`}
         >
           {placeholder && <option value="">{placeholder}</option>}
-          {options.map((opt) => (
-            <option key={opt.value ?? opt} value={opt.value ?? opt}>
+          {options.map((opt, optIdx) => (
+            <option key={`${opt.value ?? opt}-${optIdx}`} value={opt.value ?? opt}>
               {opt.label ?? opt}
             </option>
           ))}

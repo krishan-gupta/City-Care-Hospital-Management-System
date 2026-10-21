@@ -55,7 +55,21 @@ VITE_API_URL=http://localhost:8000/api
 
 ## 🏃 Running the Application
 
-### Step 1: Start the FastAPI Backend
+### Option A: 1-Click Launch (Double-click `run.py`)
+
+Simply double-click **`run.py`** (or run `python run.py` in your terminal):
+
+- Automatically detects `venv`, installs frontend packages if missing, and frees occupied ports (`8000` & `5173`).
+- Starts FastAPI Backend (`http://localhost:8000`) and React Frontend (`http://localhost:5173`).
+- Automatically opens **[http://localhost:5173](http://localhost:5173)** in your browser after 3 seconds.
+- Streams live logs from both frontend and backend in one unified console.
+- Press **Enter** or **Ctrl+C** anytime to stop all services cleanly.
+
+---
+
+### Option B: Manual Command Line Launch
+
+#### Step 1: Start the FastAPI Backend
 
 Open a terminal in the root directory:
 ```powershell

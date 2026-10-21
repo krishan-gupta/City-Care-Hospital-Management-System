@@ -245,7 +245,14 @@ def get_patient_journey(patient_id: str):
 
                 d = row.get("d")
                 if d:
-                    d_name = f"Dr. {d.get('firstName', '')} {d.get('lastName', '')} ({d.get('specialization', '')})"
+                    doc_name = d.get("name")
+                    if not doc_name:
+                        first = (d.get("firstName") or "").strip()
+                        last = (d.get("lastName") or "").strip()
+                        full = f"{first} {last}".strip()
+                        doc_name = f"Dr. {full}" if full else "Doctor"
+                    spec = d.get("specialty") or d.get("specialization")
+                    d_name = f"{doc_name} ({spec})" if spec else doc_name
                     d_id = add_node(d, "Doctor", sm.KEY_DOCTOR, d_name)
                     add_link(d_id, a_id, sm.REL_ASSIGNED_TO)
 

@@ -120,7 +120,9 @@ export default function Doctors() {
                         Dr
                       </div>
                       <div>
-                        <h3 className="text-base font-bold text-slate-900">Dr. {doc.name}</h3>
+                        <h3 className="text-base font-bold text-slate-900">
+                          {doc.name?.startsWith('Dr.') ? doc.name : `Dr. ${doc.name}`}
+                        </h3>
                         <span className="text-xs font-semibold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-100 inline-block mt-0.5">
                           {doc.specialization || 'General Practice'}
                         </span>

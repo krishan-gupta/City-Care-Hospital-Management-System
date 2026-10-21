@@ -26,21 +26,43 @@ export default function PatientJourney() {
   const navigate = useNavigate();
   const fgRef = useRef();
 
-  const [currentId, setCurrentId] = useState(id || 'P029');
+  const [currentId, setCurrentId] = useState(id && id !== 'P029' ? id : '');
   const [graphData, setGraphData] = useState({ nodes: [], links: [] });
   const [selectedNode, setSelectedNode] = useState(null);
   const [recentPatients, setRecentPatients] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch recent patients for quick switcher dropdown
+  // Fetch recent patients for quick switcher dropdown & auto-selection
   useEffect(() => {
-    getPatients({ page: 1, size: 25 })
-      .then((res) => setRecentPatients(res.data.items || []))
-      .catch(() => {});
-  }, []);
+    let isMounted = true;
+    getPatients({ page: 1, size: 50 })
+      .then((res) => {
+        if (!isMounted) return;
+        const patients = res.data?.items || [];
+        setRecentPatients(patients);
+
+        if (patients.length > 0) {
+          // If no id, or legacy 'P029', or id not in current loaded patient list
+          const hasValidId = id && id !== 'P029' && patients.some((p) => p.patientId === id);
+          if (!hasValidId) {
+            const firstPatientId = patients[0].patientId;
+            setCurrentId(firstPatientId);
+            navigate(`/patients/${firstPatientId}/journey`, { replace: true });
+          }
+        }
+      })
+      .catch((err) => {
+        if (isMounted) console.error('Error fetching patients for switcher:', err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id, navigate]);
 
   const fetchJourney = async (patientId) => {
+    if (!patientId || patientId === 'P029') return;
     setIsLoading(true);
     setError(null);
     setSelectedNode(null);
@@ -62,11 +84,13 @@ export default function PatientJourney() {
   };
 
   useEffect(() => {
-    if (id) setCurrentId(id);
+    if (id && id !== 'P029') {
+      setCurrentId(id);
+    }
   }, [id]);
 
   useEffect(() => {
-    if (currentId) {
+    if (currentId && currentId !== 'P029') {
       fetchJourney(currentId);
     }
   }, [currentId]);
@@ -146,8 +170,8 @@ export default function PatientJourney() {
             onChange={(e) => handlePatientChange(e.target.value)}
             className="px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-xl font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
           >
-            {recentPatients.map((p) => (
-              <option key={p.patientId} value={p.patientId}>
+            {recentPatients.map((p, idx) => (
+              <option key={`${p.patientId}-${idx}`} value={p.patientId}>
                 {p.patientId} - {p.name} ({p.gender}, {p.age ? `${p.age}y` : ''})
               </option>
             ))}

@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Terminal, Play, Copy, Check, Info, Database, Layers, CheckCircle2 } from 'lucide-react';
-import { getQueries, runNamedQuery } from '../api';
+import { getQueries, runNamedQuery, getPatients } from '../api';
 import Loader from '../components/Loader';
 import ErrorBanner from '../components/ErrorBanner';
 
 export default function QueryConsole() {
   const [queries, setQueries] = useState([]);
   const [selectedQueryName, setSelectedQueryName] = useState('');
-  const [paramId, setParamId] = useState('P029');
+  const [paramId, setParamId] = useState('PAT-101');
   const [queryResult, setQueryResult] = useState(null);
   const [isLoadingQueries, setIsLoadingQueries] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
@@ -26,6 +26,13 @@ export default function QueryConsole() {
       })
       .catch((err) => setError(err.message || 'Failed to fetch ready-made queries.'))
       .finally(() => setIsLoadingQueries(false));
+
+    getPatients({ page: 1, size: 5 })
+      .then((res) => {
+        const first = res.data?.items?.[0]?.patientId;
+        if (first) setParamId(first);
+      })
+      .catch(() => {});
   }, []);
 
   const currentQuery = queries.find((q) => q.name === selectedQueryName) || queries[0];
@@ -120,7 +127,7 @@ export default function QueryConsole() {
                 type="text"
                 value={paramId}
                 onChange={(e) => setParamId(e.target.value)}
-                placeholder="e.g. P029"
+                placeholder="e.g. PAT-101"
                 className="w-full px-4 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
               />
             </div>

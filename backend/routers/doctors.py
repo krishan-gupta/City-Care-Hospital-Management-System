@@ -13,6 +13,7 @@ def list_doctors(
     cypher = f"""
     MATCH (d:{sm.LABEL_DOCTOR})
     OPTIONAL MATCH (d)-[:{sm.REL_BELONGS_TO}]->(dep:{sm.LABEL_DEPARTMENT})
+    WITH d, dep
     WHERE ($dept IS NULL OR dep.name = $dept OR dep.{sm.KEY_DEPARTMENT} = $dept)
     OPTIONAL MATCH (d)-[:{sm.REL_ASSIGNED_TO}]->(:{sm.LABEL_APPOINTMENT})<-[:{sm.REL_HAS_APPOINTMENT}]-(p:{sm.LABEL_PATIENT})
     RETURN d.{sm.KEY_DOCTOR} AS empId,
@@ -21,7 +22,7 @@ def list_doctors(
            d.lastName AS lastName,
            toString(coalesce(d.phoneNumber, d.phone)) AS phone,
            d.email AS email,
-           d.specialization AS specialization,
+           coalesce(d.specialization, d.specialty) AS specialization,
            d.yearsExperience AS experience,
            d.hospitalBranch AS hospitalBranch,
            dep.{sm.KEY_DEPARTMENT} AS deptId,
@@ -37,6 +38,7 @@ def list_doctors(
 def list_departments():
     cypher = f"""
     MATCH (dep:{sm.LABEL_DEPARTMENT})
+    WHERE dep.name IS NOT NULL
     OPTIONAL MATCH (d:{sm.LABEL_DOCTOR})-[:{sm.REL_BELONGS_TO}]->(dep)
     RETURN dep.{sm.KEY_DEPARTMENT} AS deptId,
            dep.name AS name,

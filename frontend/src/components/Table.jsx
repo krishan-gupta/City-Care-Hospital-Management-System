@@ -4,6 +4,7 @@ import { Search, ChevronLeft, ChevronRight, Inbox } from 'lucide-react';
 export default function Table({
   columns,
   data = [],
+  rowKey,
   searchValue,
   onSearchChange,
   searchPlaceholder = 'Search records...',
@@ -66,8 +67,10 @@ export default function Table({
                 </td>
               </tr>
             ) : (
-              data.map((row, rowIdx) => (
-                <tr key={row.id || rowIdx} className="hover:bg-slate-50/60 transition-colors">
+              data.map((row, rowIdx) => {
+                const uniqueKey = (rowKey && row[rowKey]) || row.patientId || row.doctorId || row.appointmentId || row.consultationId || row.billId || row.id || `row-${rowIdx}`;
+                return (
+                  <tr key={uniqueKey} className="hover:bg-slate-50/60 transition-colors">
                   {columns.map((col, colIdx) => (
                     <td
                       key={colIdx}
@@ -76,8 +79,9 @@ export default function Table({
                       {col.render ? col.render(row) : (row[col.accessor] ?? '—')}
                     </td>
                   ))}
-                </tr>
-              ))
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
