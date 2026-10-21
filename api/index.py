@@ -6,10 +6,13 @@ Redirects incoming API requests to the FastAPI application.
 import sys
 from pathlib import Path
 
-# Add project root and backend folder to sys.path
-ROOT_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT_DIR / "backend"))
-sys.path.insert(0, str(ROOT_DIR))
+# Add api and api/backend to sys.path so everything is self-contained
+API_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(API_DIR / "backend"))
+sys.path.insert(0, str(API_DIR))
 
 # Import the configured FastAPI app
-from backend.main import app
+try:
+    from backend.main import app
+except ImportError:
+    from main import app
