@@ -77,6 +77,7 @@ async def neo4j_exception_handler(request: Request, exc: Neo4jError):
 
 # Health Check Endpoint
 @app.get("/api/health", tags=["Health"])
+@app.get("/health", tags=["Health"])
 def health_check():
     """Runs RETURN 1 to check database connectivity."""
     try:
@@ -91,6 +92,7 @@ def health_check():
 
 # Insurance companies (used by the Billing page dropdown)
 @app.get("/api/insurance-companies", tags=["Billing & Invoices"])
+@app.get("/insurance-companies", tags=["Billing & Invoices"])
 def list_insurance_companies():
     try:
         rows = run_query("""
@@ -105,16 +107,16 @@ def list_insurance_companies():
         return []
 
 
-# Register Routers under /api
-api_prefix = "/api"
-app.include_router(patients.router, prefix=api_prefix)
-app.include_router(doctors.router, prefix=api_prefix)
-app.include_router(appointments.router, prefix=api_prefix)
-app.include_router(consultations.router, prefix=api_prefix)
-app.include_router(labtests.router, prefix=api_prefix)
-app.include_router(bills.router, prefix=api_prefix)
-app.include_router(dashboard.router, prefix=api_prefix)
-app.include_router(queries.router, prefix=api_prefix)
+# Register Routers under /api and root (to handle both direct and rewritten Vercel requests)
+for prefix in ["/api", ""]:
+    app.include_router(patients.router, prefix=prefix)
+    app.include_router(doctors.router, prefix=prefix)
+    app.include_router(appointments.router, prefix=prefix)
+    app.include_router(consultations.router, prefix=prefix)
+    app.include_router(labtests.router, prefix=prefix)
+    app.include_router(bills.router, prefix=prefix)
+    app.include_router(dashboard.router, prefix=prefix)
+    app.include_router(queries.router, prefix=prefix)
 
 
 @app.get("/", include_in_schema=False)
