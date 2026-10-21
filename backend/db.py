@@ -11,10 +11,10 @@ if os.path.exists(env_path):
 else:
     load_dotenv()
 
-NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
-NEO4J_USER = os.getenv("NEO4J_USER") or os.getenv("NEO4J_USERNAME") or "neo4j"
-NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "")
-NEO4J_DATABASE = os.getenv("NEO4J_DATABASE")
+NEO4J_URI = os.getenv("NEO4J_URI") or "neo4j+s://a0c44dec.databases.neo4j.io"
+NEO4J_USER = os.getenv("NEO4J_USER") or os.getenv("NEO4J_USERNAME") or "a0c44dec"
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD") or "lt4Ro-0_MIfD4-9y2wG-dnL_fm69mcsFmvf8HRYktw0"
+NEO4J_DATABASE = os.getenv("NEO4J_DATABASE") or "a0c44dec"
 
 _driver: Optional[Driver] = None
 
